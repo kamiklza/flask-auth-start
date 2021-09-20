@@ -37,15 +37,19 @@ def home():
 @app.route('/register', methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        name = request.form.get('name')
         email = request.form.get('email')
-        password = request.form.get('password')
-        hashed_password = generate_password_hash(password, method='pbkdf2:sha256', salt_length=8)
-        new_user = User(name=name, email=email, password=hashed_password)
-        db.session.add(new_user)
-        db.session.commit()
-        login_user(new_user)
-        return redirect(url_for('secrets'))
+        if User.query.filter_by(email=email).first():
+            flash("You have already signed up. Please login instead.")
+            return redirect(url_for('login'))
+        else:
+            name = request.form.get('name')
+            password = request.form.get('password')
+            hashed_password = generate_password_hash(password, method='pbkdf2:sha256', salt_length=8)
+            new_user = User(name=name, email=email, password=hashed_password)
+            db.session.add(new_user)
+            db.session.commit()
+            login_user(new_user)
+            return redirect(url_for('secrets'))
     return render_template("register.html")
 
 
@@ -56,11 +60,12 @@ def login():
         password = request.form.get('password')
 
         user = User.query.filter_by(email=email).first()
+
         try:
             if check_password_hash(user.password, password):
                 login_user(user)
                 return redirect(url_for('secrets'))
-        except:
+        except AttributeError:
             flash("No user found")
             return redirect(url_for('login'))
         else:
@@ -88,10 +93,7 @@ def logout():
 
 @app.route('/download')
 def download():
-    path = '/files'
-    filename = os.path.join(path, 'cheat_sheet.pdf')
-    print(filename)
-    return send_from_directory(directory='static', filename=filename)
+    return send_from_directory(directory='static', filename='files/cheat_sheet.pdf')
 
 
 if __name__ == "__main__":
